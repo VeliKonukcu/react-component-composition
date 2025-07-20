@@ -13,6 +13,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState("")
   const [query, setQuery] = useState("")
+
   useEffect(() => {
 
     if (query.length < 2) {
@@ -44,31 +45,29 @@ export default function App() {
       }
     }
 
-    async function getMovieDetails(movieId) {
-      try {
-        const res = await fetch(`https://api.themoviedb.org/3/movie?api_key=${apiKey}&/${movieId}`)
-        
-        if (!res.ok) {
-          throw new Error("Bilinmeyen bir hata oluştu!")
-        }
-        
-        const data = await res.json();
-        if (data.total_results === 0) {
-          throw new Error("Film Bulunamadı.")
-        }
-        setSelectedMovie(data.results)
-      } catch (error) {
-        setErrMsg(error.message);
-      }
-    } 
-
     getMovies();
-    getMovieDetails();
   //   fetch(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${query}`)
   //     .then((res) => res.json())
   //     .then((data) => setMovies(data.results))
   
   }, [query]);
+
+  useEffect(() => {
+    if (!movieId) {
+      setSelectedMovie(null)
+      return
+    }
+    async function getMovieDetails() {
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/movie/${movieId}?api_key=${apiKey}`)
+        const data = await res.json();
+        setSelectedMovie(data)
+      } catch (error) {
+        setErrMsg(error.message);
+      }
+    }
+    getMovieDetails()
+  }, [movieId])
 
   return (
     <>
@@ -91,7 +90,7 @@ export default function App() {
                           <MovieList>
                             <div className="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-4">
                               {movies.map((movie) => (
-                                <Movie movie={movie} key={movie.id} setMovieId={setMovieId} />
+                                <Movie movie={movie} key={movie.id} setMovieId={setMovieId} movieId={movieId} />
                               ))}
                             </div>
                           </MovieList>
@@ -101,9 +100,10 @@ export default function App() {
                         <ListContainer>
                           <MyListSummary selectedMovies={selectedMovies} />
                           <MovieList>
-                            {selectedMovies.map((movie) => (
+                            {/* {selectedMovies.map((movie) => (
                               <MyListMovie movie={movie} key={movie.id} />
-                            ))}
+                            ))} */}
+                            {selectedMovie && <MyListMovie movie={selectedMovie} setSelectedMovie={setSelectedMovie} setMovieId={setMovieId} />}
                           </MovieList>
                         </ListContainer>
                       </div>
@@ -203,17 +203,17 @@ function MovieList({ children }) {
   );
 }
 
-function Movie({ movie, setMovieId }) {
+function Movie({ movie, movieId, setMovieId }) {
   return (
-    <div className="col mb-2" onClick={() => setMovieId(movie.id) }>
-      <div className="card">
+    <div className="col mb-2" onClick={() => setMovieId(movieId => movie.id === movieId ? 0 : movie.id) }>
+      <div className="card movie">
         <img src={
           movie.poster_path ? `https://media.themoviedb.org/t/p/w440_and_h660_face` + movie.poster_path
             : "/img/no-image.jpg"}
           alt={movie.title}
           className="card-img-top"
         />
-        <div className="card-body">
+        <div className={movie.id === movieId ? "card-body selected-movie" : "card-body"}>
           <h6 className="card-title">{movie.title}</h6>
           <div>
             <i className="bi bi-calendar2-date me-1"></i>
@@ -248,28 +248,30 @@ function MyListSummary({ selectedMovies }) {
   );
 }
 
-function MyListMovie({ movie }) {
+function MyListMovie({ movie, setSelectedMovie, setMovieId}) {
   return (
     <div className="card mb-2">
       <div className="row">
         <div className="col-4">
-          <img
-            src={movie.Poster}
-            alt={movie.Title}
+          <img src={movie.poster_path ?
+            `https://media.themoviedb.org/t/p/w440_and_h660_face` + movie.poster_path
+            : "/img/no-image.jpg"}
+            alt={movie.title}
             className="img-fluid rounded-start"
           />
+          <button className="btn btn-sm btn-danger my-1" onClick={() => setSelectedMovie(null) & setMovieId(0)}>Kaldır</button>
         </div>
         <div className="col-8">
           <div className="card-body">
-            <h6 className="card-title">{movie.Title}</h6>
-            <div className="d-flex justify-content-between">
+            <h6 className="card-title">{movie.title}</h6>
+            <div>
               <p>
                 <i className="bi bi-star-fill text-warning me-1"></i>
-                <span>{movie.rating}</span>
+                <span>{movie.vote_average.toFixed(1)}</span>
               </p>
               <p>
                 <i className="bi bi-hourglass text-warning me-1"></i>
-                <span>{movie.duration} dk</span>
+                <span>{movie.runtime} dk</span>
               </p>
             </div>
           </div>
